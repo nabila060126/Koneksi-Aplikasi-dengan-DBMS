@@ -1,0 +1,79 @@
+CREATE DATABASE IF NOT EXISTS healthyLife;
+USE healthyLife;
+
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(120) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+
+CREATE TABLE daily_note (
+    note_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    category VARCHAR(100),
+    priority VARCHAR(50),
+    note_text TEXT,
+    note_date DATE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE);
+
+
+CREATE OR REPLACE VIEW view_notes AS
+SELECT 
+    daily_note.note_id,
+    daily_note.title,
+    daily_note.category,
+    daily_note.priority,
+    daily_note.note_text,
+    daily_note.note_date,
+    users.name AS user_name
+FROM daily_note
+JOIN users ON users.user_id = daily_note.user_id;
+
+
+DELIMITER //
+CREATE FUNCTION total_notes(uid INT)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE jumlah INT;
+    SELECT COUNT(*) INTO jumlah
+    FROM daily_note
+    WHERE user_id = uid;
+    RETURN jumlah;
+END//
+DELIMITER ;
+
+
+DELIMITER //
+CREATE PROCEDURE add_note(
+    IN p_user_id INT,
+    IN p_title VARCHAR(200),
+    IN p_category VARCHAR(100),
+    IN p_priority VARCHAR(50),
+    IN p_text TEXT,
+    IN p_date DATE
+)
+BEGIN
+    INSERT INTO daily_note(user_id, title, category, priority, note_text, note_date)
+    VALUES (p_user_id, p_title, p_category, p_priority, p_text, p_date);
+END//
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER set_default_category
+BEFORE INSERT ON daily_note
+FOR EACH ROW
+BEGIN
+    IF NEW.category IS NULL OR NEW.category = '' THEN
+        SET NEW.category = 'Tidak Dikategorikan';
+    END IF;
+END//
+DELIMITER ;
